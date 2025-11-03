@@ -5,13 +5,15 @@ const { Users } = require("../db/DBManager.js");
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
-const GOOGLE_REDIRECT_URL =
-  process.env.GOOGLE_REDIRECT_URL || "https://localhost:3001/auth/google/callback";
+
+const GOOGLE_CALLBACK_URL =
+  process.env.GOOGLE_CALLBACK_URL || "https://localhost:3001/auth/google/callback";
 
 if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
-  console.warn(
-    "⚠️ Missing GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET in .env file."
-  );
+  console.warn("⚠️ Missing GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET in .env file.");
+}
+if (!process.env.GOOGLE_CALLBACK_URL) {
+  console.warn(`ℹ️ Using default callback URL: ${GOOGLE_CALLBACK_URL}`);
 }
 
 passport.use(
@@ -19,31 +21,26 @@ passport.use(
     {
       clientID: GOOGLE_CLIENT_ID,
       clientSecret: GOOGLE_CLIENT_SECRET,
-      callbackURL: GOOGLE_REDIRECT_URL,
+      callbackURL: GOOGLE_CALLBACK_URL,
     },
     (accessToken, refreshToken, profile, done) => {
       try {
-
         const user = {
-          id: profile.id,
-          name: profile.displayName,
-          email:
-            profile.emails && profile.emails[0]
-              ? profile.emails[0].value
-              : undefined,
-          profile_photo:
-            profile.photos && profile.photos[0]
-              ? profile.photos[0].value
-              : undefined,
+          id: profile?.id,
+          name: profile?.displayName || "Unknown",
+          email: profile?.emails?.[0]?.value,
+          profile_photo: profile?.photos?.[0]?.value,
           role: "User",
           provider: "google",
         };
 
-        Users[user.id] = user;
+        if (!user.id) return done(new Error("No profile.id from Google"), null);
 
-        return done(null, user);
-      } catch (error) {
-        return done(error, null);
+        Users[user.id] = { ...(Users[user.id] || {}), ...user };
+
+        return done(null, Users[user.id]);
+      } catch (err) {
+        return done(err, null);
       }
     }
   )
@@ -51,12 +48,12 @@ passport.use(
 
 passport.serializeUser((user, done) => {
   try {
-    if (!user || !user.id || typeof user.id !== "string") {
+    if (!user || typeof user.id !== "string") {
       return done(new Error("serializeUser: user.id is missing or invalid"));
     }
     done(null, user.id);
-  } catch (error) {
-    done(error);
+  } catch (err) {
+    done(err);
   }
 });
 
@@ -65,10 +62,10 @@ passport.deserializeUser((id, done) => {
     if (!id || typeof id !== "string") {
       return done(new Error("deserializeUser: invalid id"));
     }
-    const user = Users[id];
-    done(null, user || null);
-  } catch (error) {
-    done(error);
+    const user = Users[id] || null;
+    done(null, user);
+  } catch (err) {
+    done(err);
   }
 });
 

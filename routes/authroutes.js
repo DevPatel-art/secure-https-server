@@ -1,4 +1,4 @@
-// routes/authroutes.js
+
 const express = require("express");
 const passport = require("../auth/passport.cjs");
 const bcrypt = require("bcryptjs");
