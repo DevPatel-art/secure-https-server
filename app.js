@@ -14,7 +14,7 @@ const cors = require("cors");
 const rateLimit = require("express-rate-limit");
 const cookieParser = require("cookie-parser");
 const csrf = require("csurf");
-
+const profileRoutes = require("./routes/profile");
 const authRouter = require("./routes/authroutes.js");
 
 const HTTP_PORT = 3000;
@@ -64,6 +64,7 @@ app.use(compression());
 app.use(express.json({ limit: "100kb" }));
 app.use(morgan("tiny"));
 app.use(cookieParser());
+app.use(express.static(path.join(__dirname, "public")));
 
 const csrfProtection = csrf({ cookie: true });
 app.get("/csrf-token", csrfProtection, (req, res) => {
@@ -104,6 +105,8 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 app.use(authRouter);
+app.use(profileRoutes);
+
 
 const cacheFor =
   (seconds, { swr = 0, privacy = "public" } = {}) =>
@@ -181,4 +184,12 @@ redirectApp.use((req, res) => {
 });
 http.createServer(redirectApp).listen(HTTP_PORT, () => {
   console.log(`➡️  HTTP redirector on http://localhost:${HTTP_PORT}`);
+});
+
+app.get("/dashboard", (req, res) => {
+  if (!req.isAuthenticated || !req.isAuthenticated()) {
+    return res.redirect("/"); 
+  }
+
+  res.sendFile(path.join(__dirname, "public", "dashboard.html"));
 });
