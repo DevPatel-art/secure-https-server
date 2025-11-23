@@ -222,3 +222,177 @@ Create and validate JWTs with refresh tokens to maintain session continuity.
 Apply CSRF protection and rate-limiting to defend against common web attacks.
 Use RBAC to limit sensitive access based on roles.
 This phase strengthened my understanding of backend security and how to combine multiple layers of protection in a Node.js Express server.
+
+### Phase 3
+ Secure User Profile Dashboard
+
+This phase focused on implementing advanced security controls to protect user profile data, including validation, sanitization, output encoding, encryption, dependency management, and vulnerability testing. A secure dashboard was created where authenticated users can view and update their personal information.
+
+ 1. Dashboard Features
+The dashboard is located at:
+https://localhost:3001/dashboard
+
+ Features Implemented
+Displays user-specific data (name, email, bio)
+Retrieves data using secure 
+Logout button ends session 
+Responsive UI built with HTML/CSS
+User profile update form with strict validation
+Fully protected from XSS and malicious inputs
+
+Security Highlights
+No user-generated content is rendered using innerHTML
+All inserted values use .textContent
+Sensitive fields are decrypted on load and re-encrypted on update
+
+ 2. Input Validation Implementation
+
+Input validation is done using express-validator inside routes/profile.js.
+
+Validation Rules
+Field	Validation Rules	Attack Prevented
+Name	3–50 characters, letters + spaces only
+Email	Must follow standard email format
+Bio	Max 500 characters, letters/numbers/basic punctuation only
+
+Examples of "Evil Inputs" Tested
+
+<script>alert(1)</script>	Rejected	Validation 400 — blocked
+<img src=x onerror=alert(1)>	Rejected	Blocked by regex
+' OR '1'='1	Rejected	Blocked (name only letters allowed)
+1000 characters spam	Rejected	Fails max-length rule
+
+Why This Works
+No HTML tags allowed in any field
+No dangerous characters allowed
+Bio uses a strict whitelist (not blacklist)
+Requests return detailed validation errors
+
+ 3. Output Encoding Implementation 
+To prevent reflected or stored XSS, all outputs are escaped.
+
+Techniques Used
+escape-html 
+const safeName = escapeHtml(user.name || "");
+textContent 
+document.getElementById("userName").textContent = data.name;
+
+Why This Prevents XSS
+<script> becomes harmless text instead of usable code
+Even if strange input entered DB (it won’t), it would still be escaped
+No innerHTML is used anywhere
+
+Example
+User input:
+<script>alert("XSS")</script>
+
+Displayed on dashboard as:
+&lt;script&gt;alert("XSS")&lt;/script&gt;
+
+No browser execution hence safe.
+
+ 4. Encryption of Sensitive Data 
+
+All sensitive data is encrypted before storage and decrypted only on use.
+
+ Encryption Algorithm 
+AES-256-GCM using:
+32-byte key from .env
+Random 12-byte IV
+Authentication tag for integrity
+Encryption Format:
+iv:tag:ciphertext  (all Base64)
+Fields Encrypted:
+encrypted_email
+encrypted_bio
+
+In Transit Encryption (HTTPS)
+The entire application, including profile updates, runs over:
+https://localhost:3001
+ensuring TLS transport security.
+
+Example Stored Values (secure)
+encrypted_email: ClVdXG0JYvI=:alwe8gJkl302...==
+encrypted_bio: 29Hc4LvdFfc=:JLkd1vR93qwE...==
+
+ 5. Third-Party Dependency Management
+Dependency Management Practices
+npm audit performed
+Found vulnerabilities
+Fixed using:
+npm audit fix
+Screenshot documented separately
+
+Automates:
+Installing dependencies
+Running tests
+Running security audits (npm audit)
+Weekly scheduled checks
+.gitignore includes:
+node_modules
+.env
+SSL certificates
+Editor/system files
+
+Why This Matters
+Protects against known exploits in outdated packages
+Automates maintenance
+Reduces human error
+
+ 6. Cloning & Running Instructions
+
+Step 1: Clone Repo
+git clone https://github.com/DevPatel-art/secure-https-server.git
+cd secure-https-server
+
+Step 2: Install Dependencies
+npm install
+
+Step 3: Add .env
+SESSION_SECRET=your-secret
+PROFILE_ENC_KEY=32-character-random-string
+GOOGLE_CLIENT_ID=xxxx
+GOOGLE_CLIENT_SECRET=xxxx
+
+Step 4: Add SSL certificates
+
+Place your keys into:
+cert/private-key.pem
+cert/certificate.pem
+
+Step 5: Start HTTPS server
+npm run dev
+
+Step 6: Visit the dashboard
+https://localhost:3001/dashboard
+
+🧪 7. Dependency Management Documentation
+
+This project uses:
+express-validator
+escape-html
+Security lifecycle:
+Audit regularly (npm audit)
+
+
+Never commit node_modules or .env
+Keep dependencies minimal to reduce attack surface
+
+📝 8. Lessons Learned 
+Understanding Input Validation
+
+I learned how important strict validation rules are for security.
+Name, email, and bio each require different constraints, and using a approach which ensures safety.
+
+Preventing XSS with Output Encoding
+Even if input validation missed something, using .textContent and escape-html ensures nothing can execute in the browser.
+
+Correct Use of Encryption
+Implementing AES-256-GCM helped me understand:
+IV generation
+Authentication tags
+Why encryption must be at rest AND in transit
+
+Dependency Security
+Running npm audit and GitHub Actions showed me how vulnerabilities can appear even in trusted packages.
+Debugging & Problem Solving
