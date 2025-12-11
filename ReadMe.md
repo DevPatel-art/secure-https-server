@@ -396,3 +396,141 @@ Why encryption must be at rest AND in transit
 Dependency Security
 Running npm audit and GitHub Actions showed me how vulnerabilities can appear even in trusted packages.
 Debugging & Problem Solving
+
+### Phase 4
+
+# Threat Model
+
+A full threat model diagram was created, identifying:
+
+# Critical Assets
+- User data (name, email, bio)
+- Encrypted profile fields
+- Session data (cookies, Passport sessions)
+- Authentication (Local + Google OAuth)
+- HTTPS private key and certificate
+- Environment variables (`SESSION_SECRET`, `PROFILE_ENC_KEY`)
+- Dependencies and server configuration
+- Data store containing encrypted user profiles
+
+## Threats Identified (STRIDE)
+
+| **S – Spoofing** | Password guessing, forged OAuth tokens |
+| **T – Tampering** | Malicious profile update requests |
+| **R – Repudiation** | User denying profile changes |
+| **I – Information Disclosure** | XSS exposing user info |
+| **D – Denial of Service** | Brute force login attempts |
+| **E – Elevation of Privilege** | Unauthenticated access to protected routes |
+
+# Attack Vectors
+- XSS through profile fields  
+- SQL injection attempts  
+- Session hijacking  
+- Token theft during OAuth  
+- Dependency-based exploits  
+- HTTPS downgrade attacks (blocked by TLS)
+
+The diagram includes system components, data flows, and threat annotations.
+
+
+# Vulnerability Testing
+
+Security testing was performed using manual techniques, npm audit, and OWASP ZAP.
+
+
+## Automated Testing — OWASP ZAP Results
+
+A full automated scan was performed on:
+
+https://localhost:3001
+
+markdown
+Copy code
+
+OWASP ZAP generated 4 alerts, summarized below:
+
+## CSP: Failure to Define Directive With No Fallback
+ZAP detected missing fallback rules in the Content Security Policy.  
+Impact: Higher risk of loading malicious scripts.  
+Action: Strengthened Helmet CSP configuration.
+
+## CSP: Wildcard Directive
+A wildcard (`*`) was detected in CSP.  
+**Impact:** Could allow unwanted external resources.  
+**Action:** Scoped CSP to `'self'`.
+
+## CSP: style-src unsafe-inline 
+Inline CSS is allowed under current CSP.  
+**Impact:** Inline styles can be abused in targeted attacks.  
+**Action:** Logged for production tightening; low relevance in dev.
+
+## Re-examine Cache-Control Directives 
+Some static resources did not specify caching rules.  
+**Impact:** Minor risk of stale data.  
+**Action:** Documented; would be handled in production deployment.
+
+Screenshots of the ZAP Alerts & Scan Summary are included in submission.
+
+
+#  Manual Testing
+
+# XSS Attempt
+Payload:
+
+```html
+<script>alert("XSS")</script>
+
+Result:
+Input validation + output encoding blocked execution.
+No JavaScript executed.
+Form rejected malicious input as expected.
+✔ SQL Injection Attempt
+
+Payload:
+' OR '1'='1
+Result:
+express-validator blocked the string.
+No unintended behavior occurred.
+Database & logic safe from SQL-like attacks.
+Session & Authentication Testing
+Attempted accessing /dashboard without login → correctly redirected.
+Attempted modifying cookies → server rejected malformed session cookies.
+
+# Ethical & Legal Considerations
+Ethical Practices Followed
+All testing occurred only on my own local environment.
+No external systems were scanned or attacked.
+Tests were conducted responsibly and safely.
+No real user data was used.
+
+
+# Security Testing Process Documentation
+Testing Steps Completed
+Manual XSS attempts
+Manual SQL injection attempts
+Session protection tests
+npm audit vulnerability scan
+OWASP ZAP automated spider + active scan
+Hardening fixes applied
+Re-testing to confirm resolution
+
+Tools Used
+OWASP ZAP – Automated vulnerability scanner
+npm audit – Dependency vulnerability scanner
+Helmet – Security headers, CSP
+express-validator – Input validation
+escape-html – Output encoding
+bcryptjs – Password hashing
+crypto – AES encryption
+HTTPS/TLS certificates – Encryption in transit
+
+# Lessons Learned
+Through this phase, I learned:
+Security is a continuous, layered process—not a one-step fix.
+Automated tools catch vulnerabilities humans often miss.
+Manual testing reveals practical, real-world attack behavior.
+STRIDE provides a structured way to analyze risks.
+Encryption at rest + TLS in transit is essential for user privacy.
+Ethical, legal considerations are as important as technical fixes.
+Proper CSP, cookie flags, and validation significantly reduce risks.
+Overall, this phase strengthened both the technical and ethical foundations.
